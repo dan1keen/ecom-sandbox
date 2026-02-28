@@ -1,0 +1,28 @@
+
+services:
+  gateway:
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+    container_name: gateway
+    ports:
+      - "8080:8080"   # Внешняя точка входа
+    environment:
+      USER_SERVICE_URL: http://user-service:8080
+      PRODUCT_SERVICE_URL: http://product-service:8080
+      ORDER_SERVICE_URL: http://order-service:8080
+      JWT_SECRET: supersecret
+    depends_on:
+      - user-service
+      - product-service
+      - order-service
+    networks:
+      - ecom-net
+
+# -----------------------------
+# Networks & Volumes
+# -----------------------------
+
+networks:
+  ecom-net:
+    driver: bridge

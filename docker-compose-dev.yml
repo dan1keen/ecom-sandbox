@@ -1,0 +1,94 @@
+
+services:
+  rabbitmq:
+    image: rabbitmq:4.2.4-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - ecom-net
+
+  users-db:
+    image: postgres:latest
+    container_name: users-db
+    environment:
+      POSTGRES_DB: users_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - users_db_data:/var/lib/postgresql
+    networks:
+      - ecom-net
+
+  gateway:
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile.dev
+    container_name: gateway
+    ports:
+      - "8080:8080"   # Внешняя точка входа
+    volumes:
+      - .:/app
+    environment:
+      ENV: dev
+      PORT: 8080
+      USER_SERVICE_URL: http://user-service:8080
+      PRODUCT_SERVICE_URL: http://product-service:8080
+      ORDER_SERVICE_URL: http://order-service:8080
+      JWT_SECRET: dsexSFyx+KUddWjifbOla9AQL2cZgA26YQLfxCK29Lo=
+    command: sh -c "air"
+    depends_on:
+      - user-service
+#      - product-service
+#      - order-service
+    networks:
+      - ecom-net
+
+  user-service:
+    build:
+      context: ./user-service
+      dockerfile: Dockerfile.dev
+    container_name: user-service
+    volumes:
+      - .:/app
+    environment:
+      ENV: dev
+      SERVER_PORT: 8080
+      DB_HOST: users-db
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: users_db
+      RABBITMQ_URL: amqp://admin:admin@rabbitmq:5672/
+      JWT_SECRET: dsexSFyx+KUddWjifbOla9AQL2cZgA26YQLfxCK29Lo=
+    command: sh -c "air"
+    depends_on:
+      - users-db
+      - rabbitmq
+    networks:
+      - ecom-net
+
+# -----------------------------
+# Networks & Volumes
+# -----------------------------
+
+networks:
+  ecom-net:
+    driver: bridge
+
+
+volumes:
+  users_db_data:
+#  products_data:
+#  orders_data:
+#  payments_data:
+#  inventory_data:
+  rabbitmq_data:
